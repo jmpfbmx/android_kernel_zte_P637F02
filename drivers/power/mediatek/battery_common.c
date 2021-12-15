@@ -2833,13 +2833,9 @@ static void mt_battery_thermal_check(void)
 					power_supply_changed(bat_psy);
 
 					if (BMT_status.charger_exist == KAL_TRUE)
-                        #if 0
 						orderly_reboot(true);/* can not power down due to charger exist, so need reset system */
-                        #endif
 					else
-                        #if 0
 						orderly_poweroff(true);/* avoid SW no feedback */
-                        #endif
 				}
 			}
 #endif
