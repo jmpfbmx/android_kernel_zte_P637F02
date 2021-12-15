@@ -271,7 +271,6 @@ static int inet_create(struct net *net, struct socket *sock, int protocol,
 	unsigned char answer_flags;
 	int try_loading_module = 0;
 	int err;
-
 	if (!current_has_network())
 		return -EACCES;
 

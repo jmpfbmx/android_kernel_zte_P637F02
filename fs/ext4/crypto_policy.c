@@ -82,8 +82,10 @@ static int ext4_create_encryption_context_from_policy(
 
 	handle = ext4_journal_start(inode, EXT4_HT_MISC,
 				    ext4_jbd2_credits_xattr(inode));
+
 	if (IS_ERR(handle))
 		return PTR_ERR(handle);
+
 	res = ext4_xattr_set(inode, EXT4_XATTR_INDEX_ENCRYPTION,
 			     EXT4_XATTR_NAME_ENCRYPTION_CONTEXT, &ctx,
 			     sizeof(ctx), 0);
@@ -150,7 +152,7 @@ int ext4_is_child_context_consistent_with_parent(struct inode *parent,
 
 	if ((parent == NULL) || (child == NULL)) {
 		pr_err("parent %p child %p\n", parent, child);
-		WARN_ON(1);	/* Should never happen */
+		WARN_ON(1);
 		return 0;
 	}
 	/* no restrictions if the parent directory is not encrypted */

@@ -90,6 +90,9 @@ menu "DOS/FAT/NT Filesystems"
 
 source "fs/fat/Kconfig"
 source "fs/ntfs/Kconfig"
+#ZTE_MODIFY start by xiongping to add exfat filesystem driver support at 20160705
+source "fs/exfat/Kconfig"
+#ZTE_MODIFY end
 
 endmenu
 endif # BLOCK
@@ -270,5 +273,7 @@ endif # NETWORK_FILESYSTEMS
 
 source "fs/nls/Kconfig"
 source "fs/dlm/Kconfig"
+source "fs/rawfs/Kconfig"
+source "fs/yaffs2/Kconfig"
 
 endmenu

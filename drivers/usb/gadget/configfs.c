@@ -436,6 +436,11 @@ static int config_usb_cfg_link(
 	}
 
 	f = usb_get_function(fi);
+	if (f == NULL) {
+		/* Are we trying to symlink PTP without MTP function? */
+		ret = -EINVAL; /* Invalid Configuration */
+		goto out;
+	}
 	if (IS_ERR(f)) {
 		ret = PTR_ERR(f);
 		goto out;
@@ -1192,6 +1197,7 @@ static ssize_t interf_grp_compatible_id_store(struct usb_os_desc *desc,
 	if (desc->opts_mutex)
 		mutex_lock(desc->opts_mutex);
 	memcpy(desc->ext_compat_id, page, l);
+	desc->ext_compat_id[l] = '\0';
 
 	if (desc->opts_mutex)
 		mutex_unlock(desc->opts_mutex);
@@ -1222,6 +1228,7 @@ static ssize_t interf_grp_sub_compatible_id_store(struct usb_os_desc *desc,
 	if (desc->opts_mutex)
 		mutex_lock(desc->opts_mutex);
 	memcpy(desc->ext_compat_id + 8, page, l);
+	desc->ext_compat_id[l + 8] = '\0';
 
 	if (desc->opts_mutex)
 		mutex_unlock(desc->opts_mutex);
@@ -1697,6 +1704,10 @@ static struct config_group *gadgets_make(
 		const char *name)
 {
 	struct gadget_info *gi;
+	/* -Werror=unused-variable
+	struct device_attribute **attrs;
+	struct device_attribute *attr;
+	int err; */
 
 	gi = kzalloc(sizeof(*gi), GFP_KERNEL);
 	if (!gi)
@@ -1759,6 +1770,10 @@ err:
 
 static void gadgets_drop(struct config_group *group, struct config_item *item)
 {
+	/* -Werror=unused-variable
+	struct device_attribute **attrs;
+	struct device_attribute *attr; */
+
 	config_item_put(item);
 	android_device_destroy();
 }
@@ -1787,9 +1802,7 @@ void unregister_gadget_item(struct config_item *item)
 {
 	struct gadget_info *gi = to_gadget_info(item);
 
-	mutex_lock(&gi->lock);
 	unregister_gadget(gi);
-	mutex_unlock(&gi->lock);
 }
 EXPORT_SYMBOL_GPL(unregister_gadget_item);
 

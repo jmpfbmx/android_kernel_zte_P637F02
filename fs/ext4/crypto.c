@@ -298,7 +298,9 @@ static int ext4_page_crypto(struct inode *inode,
 		wait_for_completion(&ecr.completion);
 		res = ecr.res;
 	}
+
 	ablkcipher_request_free(req);
+
 	if (res) {
 		printk_ratelimited(
 			KERN_ERR
@@ -389,7 +391,7 @@ int ext4_encrypted_zeroout(struct inode *inode, struct ext4_extent *ex)
 	struct ext4_crypto_ctx	*ctx;
 	struct page		*ciphertext_page = NULL;
 	struct bio		*bio;
-	ext4_lblk_t		lblk = ex->ee_block;
+	ext4_lblk_t		lblk = le32_to_cpu(ex->ee_block);
 	ext4_fsblk_t		pblk = ext4_ext_pblock(ex);
 	unsigned int		len = ext4_ext_get_actual_len(ex);
 	int			ret, err = 0;
@@ -438,9 +440,6 @@ int ext4_encrypted_zeroout(struct inode *inode, struct ext4_extent *ex)
 			goto errout;
 		}
 		err = submit_bio_wait(WRITE, bio);
-                err = submit_bio_wait(WRITE, bio);
-		if ((err == 0) && !test_bit(BIO_UPTODATE, &bio->bi_flags))
-			err = -EIO;
 		bio_put(bio);
 		if (err)
 			goto errout;

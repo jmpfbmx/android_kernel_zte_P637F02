@@ -208,8 +208,7 @@ retry:
 	}
 	crypt_info->ci_keyring_key = keyring_key;
 	if (keyring_key->type != &key_type_logon) {
-		printk_once(KERN_WARNING
-			    "ext4: key type must be logon\n");
+		printk_once("ext4: key type must be logon\n");
 		res = -ENOKEY;
 		goto out;
 	}
@@ -222,9 +221,8 @@ retry:
 	BUILD_BUG_ON(EXT4_AES_128_ECB_KEY_SIZE !=
 		     EXT4_KEY_DERIVATION_NONCE_SIZE);
 	if (master_key->size != EXT4_AES_256_XTS_KEY_SIZE) {
-		printk_once(KERN_WARNING
-			    "ext4: key size incorrect: %d\n",
-			    master_key->size);
+		printk_once("ext4: key size incorrect: %d\n",
+				master_key->size);
 		res = -ENOKEY;
 		goto out;
 	}
@@ -249,7 +247,7 @@ got_key:
 				       ext4_encryption_key_size(mode));
 	if (res)
 		goto out;
-	memzero_explicit(raw_key, sizeof(raw_key));
+	memset(raw_key, 0, sizeof(raw_key));
 	if (cmpxchg(&ei->i_crypt_info, NULL, crypt_info) != NULL) {
 		ext4_free_crypt_info(crypt_info);
 		goto retry;
@@ -260,7 +258,7 @@ out:
 	if (res == -ENOKEY)
 		res = 0;
 	ext4_free_crypt_info(crypt_info);
-	memzero_explicit(raw_key, sizeof(raw_key));
+	memset(raw_key, 0, sizeof(raw_key));
 	return res;
 }
 

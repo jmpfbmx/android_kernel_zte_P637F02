@@ -77,13 +77,9 @@ struct acc_dev {
 	struct usb_ep *ep_in;
 	struct usb_ep *ep_out;
 
-	/* online indicates state of function_set_alt & function_unbind
-	 * set to 1 when we connect
-	 */
+	/* set to 1 when we connect */
 	int online:1;
-
-	/* disconnected indicates state of open & release
-	 * Set to 1 when we disconnect.
+	/* Set to 1 when we disconnect.
 	 * Not cleared until our file is closed.
 	 */
 	int disconnected:1;
@@ -219,7 +215,11 @@ static struct usb_request *acc_request_new(struct usb_ep *ep, int buffer_size)
 		return NULL;
 
 	/* now allocate buffers for the requests */
+#if defined(CONFIG_64BIT) && defined(CONFIG_MTK_LM_MODE)
+	req->buf = kmalloc(buffer_size, GFP_KERNEL | GFP_DMA);
+#else
 	req->buf = kmalloc(buffer_size, GFP_KERNEL);
+#endif
 	if (!req->buf) {
 		usb_ep_free_request(ep, req);
 		return NULL;
@@ -266,6 +266,7 @@ static struct usb_request *req_get(struct acc_dev *dev, struct list_head *head)
 
 static void acc_set_disconnected(struct acc_dev *dev)
 {
+	dev->online = 0;
 	dev->disconnected = 1;
 }
 
@@ -534,6 +535,15 @@ static int create_bulk_endpoints(struct acc_dev *dev,
 	ep->driver_data = dev;		/* claim the endpoint */
 	dev->ep_out = ep;
 
+	ep = usb_ep_autoconfig(cdev->gadget, out_desc);
+	if (!ep) {
+		DBG(cdev, "usb_ep_autoconfig for ep_out failed\n");
+		return -ENODEV;
+	}
+	DBG(cdev, "usb_ep_autoconfig for ep_out got %s\n", ep->name);
+	ep->driver_data = dev;		/* claim the endpoint */
+	dev->ep_out = ep;
+
 	/* now allocate requests for our endpoints */
 	for (i = 0; i < TX_REQ_MAX; i++) {
 		req = acc_request_new(dev->ep_in, BULK_BUFFER_SIZE);
@@ -765,10 +775,7 @@ static int acc_release(struct inode *ip, struct file *fp)
 	printk(KERN_INFO "acc_release\n");
 
 	WARN_ON(!atomic_xchg(&_acc_dev->open_excl, 0));
-	/* indicate that we are disconnected
-	 * still could be online so don't touch online flag
-	 */
-	_acc_dev->disconnected = 1;
+	_acc_dev->disconnected = 0;
 	return 0;
 }
 
@@ -778,6 +785,9 @@ static const struct file_operations acc_fops = {
 	.read = acc_read,
 	.write = acc_write,
 	.unlocked_ioctl = acc_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl = acc_ioctl,
+#endif
 	.open = acc_open,
 	.release = acc_release,
 };
@@ -1021,10 +1031,6 @@ acc_function_unbind(struct usb_configuration *c, struct usb_function *f)
 	struct usb_request *req;
 	int i;
 
-	dev->online = 0;		/* clear online flag */
-	wake_up(&dev->read_wq);		/* unblock reads on closure */
-	wake_up(&dev->write_wq);	/* likewise for writes */
-
 	while ((req = req_get(dev, &dev->tx_idle)))
 		acc_request_free(req, dev->ep_in);
 	for (i = 0; i < RX_REQ_MAX; i++)
@@ -1155,7 +1161,6 @@ static int acc_function_set_alt(struct usb_function *f,
 	}
 
 	dev->online = 1;
-	dev->disconnected = 0; /* if online then not disconnected */
 
 	/* readers may be blocked waiting for us to go online */
 	wake_up(&dev->read_wq);
@@ -1168,8 +1173,7 @@ static void acc_function_disable(struct usb_function *f)
 	struct usb_composite_dev	*cdev = dev->cdev;
 
 	DBG(cdev, "acc_function_disable\n");
-	acc_set_disconnected(dev); /* this now only sets disconnected */
-	dev->online = 0; /* so now need to clear online flag here too */
+	acc_set_disconnected(dev);
 	usb_ep_disable(dev->ep_in);
 	usb_ep_disable(dev->ep_out);
 

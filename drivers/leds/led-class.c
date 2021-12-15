@@ -35,6 +35,36 @@ static ssize_t brightness_show(struct device *dev,
 	return sprintf(buf, "%u\n", led_cdev->brightness);
 }
 
+
+static ssize_t camera_used_brightness_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+
+	/* no lock needed for this */
+	led_update_brightness(led_cdev);
+
+	return sprintf(buf, "%u\n", led_cdev->camera_used_brightness);
+}
+
+static ssize_t camera_used_brightness_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+	unsigned long state;
+	ssize_t ret = -EINVAL;
+
+	ret = kstrtoul(buf, 10, &state);
+	if (ret)
+		return ret;
+
+	if (state == LED_OFF)
+		led_trigger_remove(led_cdev);
+	__led_set_brightness(led_cdev, state);
+
+	return size;
+}
+
 static ssize_t brightness_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
@@ -53,7 +83,7 @@ static ssize_t brightness_store(struct device *dev,
 	return size;
 }
 static DEVICE_ATTR_RW(brightness);
-
+static DEVICE_ATTR_RW(camera_used_brightness);   
 static ssize_t max_brightness_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -76,6 +106,7 @@ static const struct attribute_group led_trigger_group = {
 
 static struct attribute *led_class_attrs[] = {
 	&dev_attr_brightness.attr,
+	&dev_attr_camera_used_brightness.attr,   
 	&dev_attr_max_brightness.attr,
 	NULL,
 };

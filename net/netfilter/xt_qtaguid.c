@@ -1813,11 +1813,8 @@ ret_res:
 }
 
 #ifdef DDEBUG
-/*
- * This function is not in xt_qtaguid_print.c because of locks visibility.
- * The lock of sock_tag_list must be aquired before calling this function
- */
-static void prdebug_full_state_locked(int indent_level, const char *fmt, ...)
+/* This function is not in xt_qtaguid_print.c because of locks visibility */
+static void prdebug_full_state(int indent_level, const char *fmt, ...)
 {
 	va_list args;
 	char *fmt_buff;
@@ -1838,12 +1835,16 @@ static void prdebug_full_state_locked(int indent_level, const char *fmt, ...)
 	kfree(buff);
 	va_end(args);
 
+	spin_lock_bh(&sock_tag_list_lock);
 	prdebug_sock_tag_tree(indent_level, &sock_tag_tree);
+	spin_unlock_bh(&sock_tag_list_lock);
 
+	spin_lock_bh(&sock_tag_list_lock);
 	spin_lock_bh(&uid_tag_data_tree_lock);
 	prdebug_uid_tag_data_tree(indent_level, &uid_tag_data_tree);
 	prdebug_proc_qtu_data_tree(indent_level, &proc_qtu_data_tree);
 	spin_unlock_bh(&uid_tag_data_tree_lock);
+	spin_unlock_bh(&sock_tag_list_lock);
 
 	spin_lock_bh(&iface_stat_list_lock);
 	prdebug_iface_stat_list(indent_level, &iface_stat_list);
@@ -1852,7 +1853,7 @@ static void prdebug_full_state_locked(int indent_level, const char *fmt, ...)
 	pr_debug("qtaguid: %s(): }\n", __func__);
 }
 #else
-static void prdebug_full_state_locked(int indent_level, const char *fmt, ...) {}
+static void prdebug_full_state(int indent_level, const char *fmt, ...) {}
 #endif
 
 struct proc_ctrl_print_info {
@@ -1975,11 +1976,8 @@ static int qtaguid_ctrl_proc_show(struct seq_file *m, void *v)
 			   (u64)atomic64_read(&qtu_events.match_no_sk),
 			   (u64)atomic64_read(&qtu_events.match_no_sk_file));
 
-		/* Count the following as part of the last item_index. No need
-		 * to lock the sock_tag_list here since it is already locked when
-		 * starting the seq_file operation
-		 */
-		prdebug_full_state_locked(0, "proc ctrl");
+		/* Count the following as part of the last item_index */
+		prdebug_full_state(0, "proc ctrl");
 	}
 
 	return 0;
@@ -2550,7 +2548,7 @@ static int pp_stats_line(struct seq_file *m, struct tag_stat *ts_entry,
 	uid_t stat_uid = get_uid_from_tag(tag);
 	struct proc_print_info *ppi = m->private;
 	/* Detailed tags are not available to everybody */
-	if (!can_read_other_uid_stats(make_kuid(&init_user_ns,stat_uid))) {
+	if (!can_read_other_uid_stats(make_kuid(&init_user_ns, stat_uid))) {
 		CT_DEBUG("qtaguid: stats line: "
 			 "%s 0x%llx %u: insufficient priv "
 			 "from pid=%u tgid=%u uid=%u stats.gid=%u\n",
@@ -2889,10 +2887,8 @@ static int qtudev_release(struct inode *inode, struct file *file)
 
 	sock_tag_tree_erase(&st_to_free_tree);
 
-	spin_lock_bh(&sock_tag_list_lock);
-	prdebug_full_state_locked(0, "%s(): pid=%u tgid=%u", __func__,
+	prdebug_full_state(0, "%s(): pid=%u tgid=%u", __func__,
 			   current->pid, current->tgid);
-	spin_unlock_bh(&sock_tag_list_lock);
 	return 0;
 }
 

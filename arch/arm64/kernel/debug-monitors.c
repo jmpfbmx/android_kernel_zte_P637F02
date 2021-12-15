@@ -26,16 +26,14 @@
 #include <linux/stat.h>
 #include <linux/uaccess.h>
 
-#include <asm/cpufeature.h>
-#include <asm/cputype.h>
 #include <asm/debug-monitors.h>
+#include <asm/cputype.h>
 #include <asm/system_misc.h>
 
 /* Determine debug architecture. */
 u8 debug_monitors_arch(void)
 {
-	return cpuid_feature_extract_field(read_system_reg(SYS_ID_AA64DFR0_EL1),
-						ID_AA64DFR0_DEBUGVER_SHIFT);
+	return read_cpuid(ID_AA64DFR0_EL1) & 0xf;
 }
 
 /*

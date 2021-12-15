@@ -125,6 +125,10 @@ static inline bool fsg_lun_is_open(struct fsg_lun *curlun)
 /* Maximal number of LUNs supported in mass storage function */
 #define FSG_MAX_LUNS	8
 
+
+#define INQUIRY_MAX_LEN	29	/* 8 + 16 + 4 + 1 */
+#define LUN_NAME_LEN	8
+
 enum fsg_buffer_state {
 	BUF_STATE_EMPTY = 0,
 	BUF_STATE_FULL,
@@ -221,5 +225,7 @@ ssize_t fsg_store_cdrom(struct fsg_lun *curlun, struct rw_semaphore *filesem,
 			const char *buf, size_t count);
 ssize_t fsg_store_removable(struct fsg_lun *curlun, const char *buf,
 			    size_t count);
+//zj add for mac
+int fsg_get_toc(struct fsg_lun *curlun, int msf, int format, u8 *buf);
 
 #endif /* USB_STORAGE_COMMON_H */
